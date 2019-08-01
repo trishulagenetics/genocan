@@ -92,25 +92,12 @@ if (workflow.profile == 'awsbatch') {
  * Create a channel for input read files
  */
 
- if(params.reads){
-     if(params.singleEnd){
-         Channel
-             .from(params.reads)
-             .map { row -> [ row[0], [file(row[1][0])]] }
-             .ifEmpty { exit 1, "params.reads was empty - no input files supplied" }
-             .set { read_files_trim }
-     } else {
-         Channel
-             .from(params.reads)
-             .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-             .ifEmpty { exit 1, "params.reads was empty - no input files supplied" }
-             .set { read_files_trim }
-     }
- } else {
-     Channel
+params.singleEnd = false
+
+Channel
          .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
          .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --singleEnd on the command line." }
-         .set { read_files_trim }
+         .into { read_files_fastqc; read_files_trim }
  }
 
 // Header log info
@@ -193,7 +180,7 @@ process trimmomatic {
     set val(name), file(reads) from read_files_trim
 
     output:
-    set val(name), file("trim_*.fastq.gz") into trimP_files
+    set val(name), file("trim_*.fastq.gz") into trimmed_fastq
     file "*_trim.out" into trim_logs
 
     script:
@@ -201,15 +188,25 @@ process trimmomatic {
     if(params.trim_truncate > 30){
       trunc_string = "MINLEN:${params.trim_truncate} CROP:${params.trim_truncate}"
     }
-    """
-    trimmomatic PE \
-    -threads ${task.cpus} \
-    -trimlog ${name}_trim.log \
-    -phred33 \
-    ${reads} trim_${reads[0]} U_${reads[0]} trim_${reads[1]} U_${reads[1]} \
-    ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
-    ${trunc_string} 2> ${name}_trim.out
-    """
+    
+    if (params.singleEnd) {
+      """
+      trimmomatic SE \
+      -threads ${task.cpus} \
+      -trimlog ${name}_trim.log \
+      -phred33 \
+      """
+    } else {
+      """
+      trimmomatic PE \
+      -threads ${task.cpus} \
+      -trimlog ${name}_trim.log \
+      -phred33 \
+      ${reads} trim_${reads[0]} U_${reads[0]} \
+      ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
+      ${trunc_string} 2> ${name}_trim.out
+      """
+      }
 }
 
 process fastqc {
@@ -218,8 +215,8 @@ process fastqc {
         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
     input:
-    file(reads) from trimP_files
-    val(name) from trimP_files
+     
+    set val(name), file(reads) from read_files_fastqc
 
     output:
     file "*_fastqc.{zip,html}" into fastqc_results
