@@ -92,25 +92,25 @@ if (workflow.profile == 'awsbatch') {
  * Create a channel for input read files
  */
 
- if(params.readPaths){
+ if(params.reads){
      if(params.singleEnd){
          Channel
-             .from(params.readPaths)
+             .from(params.reads)
              .map { row -> [ row[0], [file(row[1][0])]] }
-             .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
-             .into { read_files_trim }
+             .ifEmpty { exit 1, "params.reads was empty - no input files supplied" }
+             .set { read_files_trim }
      } else {
          Channel
-             .from(params.readPaths)
+             .from(params.reads)
              .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-             .ifEmpty { exit 1, "params.readPaths was empty - no input files supplied" }
-             .into { read_files_trim }
+             .ifEmpty { exit 1, "params.reads was empty - no input files supplied" }
+             .set { read_files_trim }
      }
  } else {
      Channel
          .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
          .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nIf this is single-end data, please specify --singleEnd on the command line." }
-         .into { read_files_trim }
+         .set { read_files_trim }
  }
 
 // Header log info
