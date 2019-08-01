@@ -64,6 +64,7 @@ params.email = false
 params.plaintext_email = false
 
 multiqc_config = file(params.multiqc_config)
+output_docs = file("$baseDir/docs/output.md")
 
 // Validate inputs
 
