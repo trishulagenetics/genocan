@@ -167,7 +167,7 @@ process get_software_versions {
     fastqc --version > v_fastqc.txt
     multiqc --version > v_multiqc.txt
     java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar -version > v_trimmomatic.txt
-    python scrape_software_versions.py > software_versions_mqc.yaml
+    python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
 
 }
