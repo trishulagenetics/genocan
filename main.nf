@@ -264,7 +264,7 @@ process multiqc {
 
     script:
     """
-    ${baseDir}/bin/markdown_to_html.R $output_docs results_description.html
+    Rscript ${baseDir}/bin/markdown_to_html.R $output_docs results_description.html
     """
 }
 
