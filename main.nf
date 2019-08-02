@@ -195,6 +195,10 @@ process trimmomatic {
       -threads ${task.cpus} \
       -trimlog ${name}_trim.log \
       -phred33 \
+      ${reads} trim_${reads[0]} U_${reads[0]} \
+      ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
+      ${trunc_string} 2> ${name}_trim.out
+
       """
     } else {
       """
@@ -202,7 +206,7 @@ process trimmomatic {
       -threads ${task.cpus} \
       -trimlog ${name}_trim.log \
       -phred33 \
-      ${reads} trim_${reads[0]} U_${reads[0]} \
+      ${reads} trim_${reads[0]} U_${reads[0]} trim_${reads[1]} U_${reads[1]}\
       ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
       ${trunc_string} 2> ${name}_trim.out
       """
