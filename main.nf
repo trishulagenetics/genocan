@@ -191,14 +191,14 @@ process trimmomatic {
     
     if (params.singleEnd) {
       """
-      java -jar trimmomatic-0.36.jar SE \
+      java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar SE \
       -threads ${task.cpus} \
       -trimlog ${name}_trim.log \
       -phred33 \
       """
     } else {
       """
-      java -jar trimmomatic-0.36.jar trimmomatic PE \
+      java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar trimmomatic PE \
       -threads ${task.cpus} \
       -trimlog ${name}_trim.log \
       -phred33 \
