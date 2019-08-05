@@ -167,6 +167,8 @@ process get_software_versions {
     fastqc --version > v_fastqc.txt
     multiqc --version > v_multiqc.txt
     java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar -version > v_trimmomatic.txt
+    bwa > v_bwa.txt
+    samtools --version > v_samtools.txt
     python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
 
@@ -231,6 +233,64 @@ process fastqc {
     """
 }
 
+process bwa_align {
+    tag "$name"
+    publishDir "${params.output}/mapping/bwamem", mode: "copy"
+
+    input:
+        set val(name), file(reads) from trimmed_fastq
+        set file(fasta)
+        file "*" from bwa_index
+            
+    output:
+       file "${name}_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
+       file "*.bai"
+            
+    """ 
+    bwa mem ${fasta} ${reads} -t ${threads} > ${name}.sam
+    samtools view -bS ${name}.sam | samtools sort -@ ${threads} -o ${name}_sorted.bam
+    samtools index -@ ${threads} -o ${name}_sorted.bam
+    """ 
+}
+
+process samtools_idxstats {
+    tag "$name"
+    publishDir "${params.outdir}/samtools/stats", mode: 'copy'
+
+    input:
+    set val(name), file(bam) from bwa_sorted_bam_idxstats
+
+    output:
+    file "*.stats" into bwamem_idxstats_for_multiqc
+
+    script:
+    
+    """
+    samtools flagstat $bam > ${name}.stats
+    """
+}
+
+process samtools_filter {
+    tag "$name"
+    publishDir "${params.outdir}/samtools/filter", mode: 'copy'
+
+    input:
+    set val(name), file(bam) from bwa_sorted_bam_filter
+    file(fasta)
+    file(fasta_index)
+
+    output:
+    file "${name}_filtered.vcf" into filtered_vcf
+
+    script:
+    
+    """
+    samtools mpileup -Q 30 -q 20 -B -C 50 -f ${fasta} ${bam} -v -o ${name}.vcf
+    bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} ${name}.vcf > ${name}_variants.vcf
+    vcftools --vcf ${name}_variants.vcf --minDP 10 --recode --stdout > ${name}_filtered.vcf
+    """
+}
+
 process multiqc {
     publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
@@ -238,6 +298,7 @@ process multiqc {
     file multiqc_config
     file ('fastqc/*') from fastqc_results.collect()
     file ('trimmomatic/*') from trim_logs.collect()
+    file ('samtools/*') from bwamem_idxstats_for_multiqc.collect()
     file ('software_versions/*') from software_versions_yaml
 
     output:
