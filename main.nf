@@ -272,7 +272,7 @@ process bwa_align {
 
     input:
         set val(name), file(reads) from trimmed_fastq
-        set file(fasta)
+        file(fasta)
         file "*" from bwa_index
             
     output:
