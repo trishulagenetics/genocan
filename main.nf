@@ -233,6 +233,39 @@ process fastqc {
     """
 }
 
+
+process build_bwa_index {
+        publishDir "${params.outdir}/bwa_index", mode: "copy"
+
+        tag "$fasta"
+
+        input:
+            file(fasta)
+
+        output:
+            file '*' into bwa_index
+
+        """
+        bwa index ${fasta}
+        """
+}
+
+process build_fasta_index {
+        publishDir "${params.outdir}/fasta_index", mode: "copy"
+
+        tag "$fasta"
+
+        input:
+            file(fasta)
+
+        output:
+            file '*' into fasta_index
+
+        """
+        samtools faidx ${fasta}
+        """
+}
+
 process bwa_align {
     tag "$name"
     publishDir "${params.output}/mapping/bwamem", mode: "copy"
