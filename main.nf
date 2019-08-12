@@ -235,35 +235,37 @@ process fastqc {
 
 
 process build_bwa_index {
-        publishDir "${params.outdir}/bwa_index", mode: "copy"
+    tag "$fasta"
 
-        tag "$fasta"
+    publishDir "${params.outdir}/bwa_index", mode: "copy"
 
-        input:
-            file(fasta)
+    input:
+        
+    file fasta
 
-        output:
-            file '*' into bwa_index
+    output:
+        
+    file '*' into bwa_index
 
-        """
-        bwa index ${fasta}
-        """
+    """
+    bwa index $fasta
+    """
 }
 
 process build_fasta_index {
-        publishDir "${params.outdir}/fasta_index", mode: "copy"
+    publishDir "${params.outdir}/fasta_index", mode: "copy"
 
-        tag "$fasta"
+    tag "$fasta"
 
-        input:
-            file(fasta)
+    input:
+    file fasta
 
-        output:
-            file '*' into fasta_index
+    output:
+    file '*' into fasta_index
 
-        """
-        samtools faidx ${fasta}
-        """
+    """
+    samtools faidx $fasta
+    """
 }
 
 process bwa_align {
@@ -271,16 +273,16 @@ process bwa_align {
     publishDir "${params.output}/mapping/bwamem", mode: "copy"
 
     input:
-        set val(name), file(reads) from trimmed_fastq
-        file(fasta)
-        file "*" from bwa_index
+    set val(name), file(reads) from trimmed_fastq
+    file fasta
+    file "*" from bwa_index
             
     output:
-       file "${name}_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
-       file "*.bai"
+    file "${name}_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
+    file "*.bai"
             
     """ 
-    bwa mem ${fasta} ${reads} -t ${threads} > ${name}.sam
+    bwa mem $fasta ${reads} -t ${threads} > ${name}.sam
     samtools view -bS ${name}.sam | samtools sort -@ ${threads} -o ${name}_sorted.bam
     samtools index -@ ${threads} -o ${name}_sorted.bam
     """ 
@@ -309,8 +311,8 @@ process samtools_filter {
 
     input:
     set val(name), file(bam) from bwa_sorted_bam_filter
-    file(fasta)
-    file(fasta_index)
+    file fasta
+    file fasta_index
 
     output:
     file "${name}_filtered.vcf" into filtered_vcf
