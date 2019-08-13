@@ -304,8 +304,8 @@ process bwa_align {
             
     """ 
     bwa mem $fasta ${reads} -t ${task.cpus} > ${name}.sam
-    samtools view -bS ${name}.sam | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
-    samtools index -@ ${task.cpus} -o ${name}_sorted.bam
+    samtools view -bS ${name}.sam | samtools sort -@ ${task.cpus} -O bam - > ${name}_sorted.bam
+    samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
 }
 
