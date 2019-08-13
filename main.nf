@@ -268,8 +268,6 @@ process build_bwa_index {
 process build_fasta_index {
     tag "$fasta"
 
-    publishDir "${params.outdir}/fasta_index", mode: "copy"
-
     publishDir path: "${params.outdir}/fasta_index", mode: 'copy', saveAs: { filename ->
             if (params.saveReference) filename
             else if(!params.saveReference && filename == "where_are_my_files.txt") filename
@@ -280,12 +278,15 @@ process build_fasta_index {
 
     input:
     file fasta
+    file wherearemyfiles
 
     output:
     file "${fasta}.fai" into fasta_index
+    file "${fasta}"
 
     """
     samtools faidx $fasta
+    file "where_are_my_files.txt"
     """
 }
 
