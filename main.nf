@@ -62,6 +62,7 @@ params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : 
 params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
 params.email = false
 params.plaintext_email = false
+params.bwa_index = false
 
 multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
