@@ -116,6 +116,7 @@ summary['Pipeline version'] = params.version
 summary['Run name'] = custom_runName ?: workflow.runName
 summary['Reads'] = params.reads
 summary['Fasta reference'] = params.fasta
+summary['bwa index'] = params.bwa_index
 summary['Data type'] = params.singleEnd ? 'Single-end' : 'Paired-end'
 summary['Max Memory']   = params.max_memory
 summary['Max CPUs']     = params.max_cpus
@@ -240,7 +241,7 @@ process build_bwa_index {
 
     publishDir "${params.outdir}/bwa_index", mode: "copy"
 
-    when: !params.bwa_index && params.fasta
+    when: !params.bwa_index
 
     input:
         
