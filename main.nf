@@ -40,6 +40,7 @@ def helpMessage() {
 
 	References			If not specified in the configuration file or if you wish to overwrite any of the references
 		--fasta			Path to fasta reference
+    --bwa_index Path to bwa index files
 
 	""".stripIndent()
 }
