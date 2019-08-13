@@ -255,6 +255,24 @@ process build_bwa_index {
     """
 }
 
+process build_fasta_index {
+    tag "$fasta"
+
+    publishDir "${params.outdir}/fasta_index", mode: "copy"
+
+    when: !params.fasta_index && params.fasta
+
+    input:
+    file fasta
+
+    output:
+    file "${fasta}.fai" into fasta_index
+
+    """
+    samtools faidx $fasta
+    """
+}
+
 process bwa_align {
     tag "$name"
     publishDir "${params.output}/mapping/bwamem", mode: "copy"
