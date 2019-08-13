@@ -167,7 +167,7 @@ process get_software_versions {
     fastqc --version > v_fastqc.txt
     multiqc --version > v_multiqc.txt
     java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar -version > v_trimmomatic.txt
-    bwa > v_bwa.txt
+    bwa &> v_bwa.txt 2>&1
     samtools --version > v_samtools.txt
     python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
@@ -230,41 +230,6 @@ process fastqc {
     script:
     """
     fastqc -q $reads
-    """
-}
-
-
-process build_bwa_index {
-    tag "$fasta"
-
-    publishDir "${params.outdir}/bwa_index", mode: "copy"
-
-    input:
-        
-    file fasta
-
-    output:
-        
-    file '*' into bwa_index
-
-    """
-    bwa index $fasta
-    """
-}
-
-process build_fasta_index {
-    publishDir "${params.outdir}/fasta_index", mode: "copy"
-
-    tag "$fasta"
-
-    input:
-    file fasta
-
-    output:
-    file '*' into fasta_index
-
-    """
-    samtools faidx $fasta
     """
 }
 
