@@ -292,7 +292,7 @@ process build_fasta_index {
 
 process bwa_align {
     tag "$name"
-    publishDir "${params.output}/mapping/bwamem", mode: 'copy'
+    publishDir "${params.outdir}/mapping/bwamem", mode: 'copy'
 
     input:
     set val(name), file(reads) from trimmed_fastq
@@ -339,7 +339,7 @@ process samtools_filter {
     file fasta_index
 
     output:
-    file "${name}_filtered.vcf" into filtered_vcf
+    file "${prefix}_filtered.vcf" into filtered_vcf
 
     script:
     
@@ -347,7 +347,7 @@ process samtools_filter {
 
     """
     samtools mpileup -Q 30 -q 20 -B -C 50 -f ${fasta} ${bam} -v -o ${prefix}.vcf
-    bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} ${name}.vcf > ${prefix}_variants.vcf
+    bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} ${prefix}.vcf > ${prefix}_variants.vcf
     vcftools --vcf ${prefix}_variants.vcf --minDP 10 --recode --stdout > ${prefix}_filtered.vcf
     """
 }
