@@ -282,9 +282,9 @@ process bwa_align {
     file "*.bai"
             
     """ 
-    bwa mem $fasta ${reads} -t ${threads} > ${name}.sam
-    samtools view -bS ${name}.sam | samtools sort -@ ${threads} -o ${name}_sorted.bam
-    samtools index -@ ${threads} -o ${name}_sorted.bam
+    bwa mem $fasta ${reads} -t ${task.cpus} > ${name}.sam
+    samtools view -bS ${name}.sam | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    samtools index -@ ${task.cpus} -o ${name}_sorted.bam
     """ 
 }
 
