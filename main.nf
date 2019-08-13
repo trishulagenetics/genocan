@@ -41,6 +41,7 @@ def helpMessage() {
 	References			If not specified in the configuration file or if you wish to overwrite any of the references
 		--fasta			Path to fasta reference
     --bwa_index Path to bwa index files
+    --saveReference Saves reference genome indices for later reusage
 
 	""".stripIndent()
 }
@@ -64,9 +65,11 @@ params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
 params.email = false
 params.plaintext_email = false
 params.bwa_index = false
+params.fasta_index = false
 
 multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
+wherearemyfiles = file("$baseDir/assets/where_are_my_files.txt")
 
 // Validate inputs
 
@@ -239,17 +242,23 @@ process fastqc {
 process build_bwa_index {
     tag "$fasta"
 
-    publishDir "${params.outdir}/bwa_index", mode: "copy"
+    publishDir path: "${params.outdir}/bwa_index", mode: 'copy', saveAs: { filename ->
+            if (params.saveReference) filename
+            else if(!params.saveReference && filename == "where_are_my_files.txt") filename
+            else null
+    }
 
-    // when: !params.bwa_index
+    when: !params.bwa_index && params.fasta
 
     input:
         
     file fasta
+    file wherearemyfiles
 
     output:
         
     file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index
+    file "where_are_my_files.txt"
 
     """
     bwa index $fasta
@@ -260,6 +269,12 @@ process build_fasta_index {
     tag "$fasta"
 
     publishDir "${params.outdir}/fasta_index", mode: "copy"
+
+    publishDir path: "${params.outdir}/fasta_index", mode: 'copy', saveAs: { filename ->
+            if (params.saveReference) filename
+            else if(!params.saveReference && filename == "where_are_my_files.txt") filename
+            else null
+    }
 
     when: !params.fasta_index && params.fasta
 
