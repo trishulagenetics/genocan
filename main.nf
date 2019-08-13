@@ -166,11 +166,11 @@ process get_software_versions {
     """
     echo $params.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
-    fastqc --version > v_fastqc.txt
-    multiqc --version > v_multiqc.txt
-    java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar -version > v_trimmomatic.txt
-    bwa &> v_bwa.txt 2>&1
-    samtools --version > v_samtools.txt
+    fastqc --version &> v_fastqc.txt 2>&1 || true
+    multiqc --version &> v_multiqc.txt 2>&1 || true
+    java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar -version > v_trimmomatic.txt || true
+    bwa &> v_bwa.txt 2>&1 || true
+    samtools --version &> v_samtools.txt 2>&1 || true
     python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
 
