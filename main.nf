@@ -235,6 +235,26 @@ process fastqc {
     """
 }
 
+process build_bwa_index {
+    tag "$fasta"
+
+    publishDir "${params.outdir}/bwa_index", mode: "copy"
+
+    when: !params.bwa_index && params.fasta
+
+    input:
+        
+    file fasta
+
+    output:
+        
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index
+
+    """
+    bwa index $fasta
+    """
+}
+
 process bwa_align {
     tag "$name"
     publishDir "${params.output}/mapping/bwamem", mode: "copy"
