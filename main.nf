@@ -311,28 +311,30 @@ process bwa_align {
 }
 
 process samtools_idxstats {
-    tag "$name"
+    tag "$prefix"
     publishDir "${params.outdir}/samtools/stats", mode: 'copy'
 
     input:
-    set val(name), file(bam) from bwa_sorted_bam_idxstats
+    file(bam) from bwa_sorted_bam_idxstats
 
     output:
     file "*.stats" into bwamem_idxstats_for_multiqc
 
     script:
     
+    prefix = "$bam" - ~/(\.bam)?$/
+
     """
-    samtools flagstat $bam > ${name}.stats
+    samtools flagstat $bam > ${prefix}.stats
     """
 }
 
 process samtools_filter {
-    tag "$name"
+    tag "$prefix"
     publishDir "${params.outdir}/samtools/filter", mode: 'copy'
 
     input:
-    set val(name), file(bam) from bwa_sorted_bam_filter
+    file(bam) from bwa_sorted_bam_filter
     file fasta
     file fasta_index
 
@@ -341,10 +343,12 @@ process samtools_filter {
 
     script:
     
+    prefix = "$bam" - ~/(\.bam)?$/
+
     """
-    samtools mpileup -Q 30 -q 20 -B -C 50 -f ${fasta} ${bam} -v -o ${name}.vcf
-    bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} ${name}.vcf > ${name}_variants.vcf
-    vcftools --vcf ${name}_variants.vcf --minDP 10 --recode --stdout > ${name}_filtered.vcf
+    samtools mpileup -Q 30 -q 20 -B -C 50 -f ${fasta} ${bam} -v -o ${prefix}.vcf
+    bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} ${name}.vcf > ${prefix}_variants.vcf
+    vcftools --vcf ${prefix}_variants.vcf --minDP 10 --recode --stdout > ${prefix}_filtered.vcf
     """
 }
 
