@@ -241,7 +241,7 @@ process build_bwa_index {
 
     publishDir "${params.outdir}/bwa_index", mode: "copy"
 
-    when: !params.bwa_index
+    // when: !params.bwa_index
 
     input:
         
