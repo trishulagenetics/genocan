@@ -292,7 +292,7 @@ process build_fasta_index {
 
 process bwa_align {
     tag "$name"
-    publishDir "${params.output}/mapping/bwamem", mode: "copy"
+    publishDir "${params.output}/mapping/bwamem", mode: 'copy'
 
     input:
     set val(name), file(reads) from trimmed_fastq
