@@ -1,4 +1,4 @@
-From:trishulagenetics/genocan
+From:nfcore/base
 Bootstrap:docker
 
 %labels
