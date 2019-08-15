@@ -11,7 +11,6 @@
 ----------------------------------------------------------------------------------------
 */
 
-
 def helpMessage() {
 	log.info"""
 	=============================================
@@ -29,19 +28,22 @@ def helpMessage() {
 	 * NEED TO DECIDE WHETHER INPUT IS WHOLE LANE OR PRE-DEMULTIPLEXED!
 	 */
 
-		--reads			Path to input data (must be surrounded with quotes)
-		-profile		Configuration profile to use [docker/awsbatch]
+		--reads			                  Path to input data (must be surrounded with quotes)
+		-profile		                  Configuration profile to use [docker/awsbatch]
 
 	Options:
-		--singleEnd		Specifies that the input is single end reads
-		--outdir		Specify output directory where the results will be saved
-		--email			Specify email address to send run details to
-		-name			Name for the pipeline run. If not specified, Nextflow will generate a random name
+		--singleEnd		                Specifies that the input is single end reads
+		--outdir		                  Specify output directory where the results will be saved
+		--email		 	                  Specify email address to send run details to
+		-name			                    Name for the pipeline run. If not specified, Nextflow will generate a random name
 
-	References			If not specified in the configuration file or if you wish to overwrite any of the references
-		--fasta			Path to fasta reference
-    --bwa_index Path to bwa index files
-    --saveReference Saves reference genome indices for later reusage
+	References			                If not specified in the configuration file or if you wish to overwrite any of the references
+		--fasta			                  Path to fasta reference
+    --bwa_index                   Path to bwa index files
+    --fasta_index                 Path to fasta index
+    --saveReference               Saves reference genome indices for later reusage
+    --dedup_all_merged            Treat all reads as merged reads
+    --snpcapture                  Runs in SNPCapture mode (specify a BED file if you do this!)
 
 	""".stripIndent()
 }
@@ -52,6 +54,7 @@ def helpMessage() {
 
 // Show help message
 
+params.help = false
 if (params.help){
 	helpMessage()
 	exit 0
@@ -66,6 +69,9 @@ params.email = false
 params.plaintext_email = false
 params.bwa_index = false
 params.fasta_index = false
+params.saveReference = false
+params.dedup_all_merged = false
+params.snpcapture = false
 
 multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
@@ -78,7 +84,6 @@ if (params.fasta) {
 	if( !fasta.exists() ) exit 1, "Fasta file not found: ${params.fasta}"
 }
 
-
 // Use user-specified run name
 
 custom_runName = params.name
@@ -87,12 +92,17 @@ if ( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ) {
 	custom_runName = workflow.runName
 }
 
-
 // Check that workDir/outdir paths are s3 buckets if using AWSbatch
 
-if (workflow.profile == 'awsbatch') {
-	if(!workflow.workDir.startsWith('s3:') || !params.outdir.startsWith('s3:')) exit 1, "Workdir or Outdir not on S3 - specify S3 Buckets for each to run on AWSBatch!"
+if(workflow.profile == 'awsbatch'){
+    if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
+    if(!workflow.workDir.startsWith('s3:') || !params.outdir.startsWith('s3:')) exit 1, "Workdir or Outdir not on S3 - specify S3 Buckets for each to run on AWSBatch!"
 }
+
+// Validate inputs
+Channel.fromPath("${params.fasta}")
+    .ifEmpty { exit 1, "No genome specified! Please specify one with --fasta or --bwa_index"}
+    .into {ch_fasta_for_bwa_indexing;ch_fasta_for_faidx_indexing;ch_fasta_for_variant_call; ch_fasta_for_bwamem_mapping, ch_fasta_for_qualimap}
 
 /*
  * Create a channel for input read files
@@ -143,6 +153,24 @@ if(params.email) summary['E-mail Address'] = params.email
 log.info summary.collect { k,v -> "${k.padRight(15)}: $v" }.join("\n")
 log.info "========================================="
 
+def create_workflow_summary(summary) {
+
+    def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
+    yaml_file.text  = """
+    id: 'nf-core-eager-summary'
+    description: " - this information is collected when the pipeline is started."
+    section_name: 'nf-core/eager Workflow Summary'
+    section_href: 'https://github.com/nf-core/eager'
+    plot_type: 'html'
+    data: |
+        <dl class=\"dl-horizontal\">
+${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style=\"color:#999999;\">N/A</a>'}</samp></dd>" }.join("\n")}
+        </dl>
+    """.stripIndent()
+
+   return yaml_file
+}
+
 // Check that Nextflow version is up to date enough
 
 try {
@@ -172,53 +200,36 @@ process get_software_versions {
     echo $workflow.nextflow.version > v_nextflow.txt
     fastqc --version &> v_fastqc.txt 2>&1 || true
     multiqc --version &> v_multiqc.txt 2>&1 || true
-    java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar -version > v_trimmomatic.txt || true
+    fastp --version &> v_fastp.txt 2>&1 || true
+    qualimap --version &> v_qualimap.txt 2>&1 || true
     bwa &> v_bwa.txt 2>&1 || true
     samtools --version &> v_samtools.txt 2>&1 || true
+    bam --version &> v_bamutil.txt 2>&1 || true
     python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
-
 }
 
-process trimmomatic {
+process fastp {
     tag "$name"
-    publishDir "${params.outdir}/trimmed_reads", mode: 'copy'
+    publishDir "${params.outdir}/FastP", mode: 'copy'
 
     input:
     set val(name), file(reads) from read_files_trim
 
     output:
-    set val(name), file("trim_*.fastq.gz") into trimmed_fastq
-    file "*_trim.out" into trim_logs
+    set val(name), file("*_trim.fastq.gz") into trimmed_fastq
+    file("*.json") into fastp_for_multiqc
 
     script:
-    trunc_string = "MINLEN:30 CROP:30"
-    if(params.trim_truncate > 30){
-      trunc_string = "MINLEN:${params.trim_truncate} CROP:${params.trim_truncate}"
-    }
-    
-    if (params.singleEnd) {
-      """
-      java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar SE \
-      -threads ${task.cpus} \
-      -trimlog ${name}_trim.log \
-      -phred33 \
-      ${reads} trim_${reads} \
-      ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
-      ${trunc_string} 2> ${name}_trim.out
-
-      """
+    if(params.singleEnd){
+    """
+    fastp --in1 ${reads} --out1 ${name}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
+    """
     } else {
-      """
-      java -jar ${TRIMMOMATIC}/trimmomatic-0.36.jar trimmomatic PE \
-      -threads ${task.cpus} \
-      -trimlog ${name}_trim.log \
-      -phred33 \
-      ${reads} trim_${reads[0]} U_${reads[0]} trim_${reads[1]} U_${reads[1]}\
-      ILLUMINACLIP:${params.trim_adapters}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 \
-      ${trunc_string} 2> ${name}_trim.out
-      """
-      }
+    """
+    fastp --in1 ${reads[0]} --in2 ${reads[1]} --out1 ${reads[0].baseName}_trim.fastq.gz --out2 ${reads[1].baseName}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
+    """
+    }
 }
 
 process fastqc {
@@ -252,7 +263,7 @@ process build_bwa_index {
 
     input:
         
-    file fasta
+    file fasta from ch_fasta_for_bwa_indexing
     file wherearemyfiles
 
     output:
@@ -277,16 +288,16 @@ process build_fasta_index {
     when: !params.fasta_index && params.fasta
 
     input:
-    file fasta
+    file fasta from ch_fasta_for_faidx_indexing
     file wherearemyfiles
 
     output:
     file "${fasta}.fai" into fasta_index
     file "${fasta}"
+    file "where_are_my_files.txt"
 
     """
     samtools faidx $fasta
-    file "where_are_my_files.txt"
     """
 }
 
@@ -296,7 +307,7 @@ process bwa_align {
 
     input:
     set val(name), file(reads) from trimmed_fastq
-    file fasta
+    file fasta ch_fasta_for_bwamem_mapping
     file "*" from bwa_index
             
     output:
@@ -334,11 +345,90 @@ process samtools_filter {
     publishDir "${params.outdir}/samtools/filter", mode: 'copy'
 
     input:
-    file(bam) from bwa_sorted_bam_filter
-    file fasta
+    file bam from bwa_sorted_bam_filter
+    
+    output:
+    file "*filtered.bam" into bam_filtered_qualimap, bam_filtered_dedup, bam_filtered_call_variants
+    file "*.fastq.gz"
+    file "*.bai"
+
+    script:
+    
+    prefix = "$bam" - ~/(\.bam)?$/
+
+    """
+    samtools view -h $bam | tee >(samtools view - -@ ${task.cpus} -f4 -q 15 -o ${prefix}.unmapped.bam) >(samtools view - -@ ${task.cpus} -F4 -q 15 -o ${prefix}.filtered.bam)
+    samtools fastq -tn "${prefix}.unmapped.bam" | gzip > "${prefix}.unmapped.fastq.gz"
+    samtools index -@ ${task.cpus} ${prefix}.filtered.bam
+    """
+}
+
+process dedup{
+    tag "${bam.baseName}"
+    publishDir "${params.outdir}/deduplication/dedup"
+
+    input:
+    file bam from bam_filtered_dedup
+
+    output:
+    file "*.log" into dedup_results_for_multiqc
+    file "${prefix}.sorted.bam" into dedup_bam
+    file "*.bai"
+
+    script:
+    prefix="${bam.baseName}"
+    treat_merged="${params.dedup_all_merged}" ? '-m' : ''
+
+    if(params.singleEnd) {
+    """
+    dedup -i $bam $treat_merged -o . -u
+    mv *.log dedup.log
+    samtools sort -@ ${task.cpus} "$prefix"_rmdup.bam -o "$prefix".sorted.bam
+    samtools index -@ ${task.cpus} "$prefix".sorted.bam
+    """
+    } else {
+    """
+    dedup -i $bam $treat_merged -o . -u
+    mv *.log dedup.log
+    samtools sort -@ ${task.cpus} "$prefix"_rmdup.bam -o "$prefix".sorted.bam
+    samtools index -@ ${task.cpus} "$prefix".sorted.bam
+    """
+    }
+}
+
+process qualimap {
+    tag "${bam.baseName}"
+    publishDir "${params.outdir}/qualimap", mode: 'copy'
+
+    when:
+    !params.skip_qualimap
+
+    input:
+    file bam from bam_filtered_qualimap
+    file fasta from ch_fasta_for_qualimap
+
+    output:
+    file "*" into qualimap_results
+
+    script:
+    snpcap = ''
+    if(params.snpcapture) snpcap = "-gff ${params.bedfile}"
+    """
+    qualimap bamqc -bam $bam -nt ${task.cpus} -outdir . -outformat "HTML" ${snpcap}
+    """
+}
+
+process variant_call {
+    tag "$prefix"
+    publishDir "${params.outdir}/samtools/variants", mode: 'copy'
+
+    input:
+    file bam from dedup_bam
+    file fasta from ch_fasta_for_variant_call
     file fasta_index
 
     output:
+    file "${prefix}_variants.vcf" into intial_vcf
     file "${prefix}_filtered.vcf" into filtered_vcf
 
     script:
@@ -346,8 +436,7 @@ process samtools_filter {
     prefix = "$bam" - ~/(\.bam)?$/
 
     """
-    samtools mpileup -Q 30 -q 20 -B -C 50 -f ${fasta} ${bam} -v -o ${prefix}.vcf
-    bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} ${prefix}.vcf > ${prefix}_variants.vcf
+    bcftools mpileup -Ou -f ${fasta} ${bam} | bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} -Oz -o ${prefix}_variants.vcf
     vcftools --vcf ${prefix}_variants.vcf --minDP 10 --recode --stdout > ${prefix}_filtered.vcf
     """
 }
@@ -357,10 +446,14 @@ process multiqc {
 
     input:
     file multiqc_config
-    file ('fastqc/*') from fastqc_results.collect()
-    file ('trimmomatic/*') from trim_logs.collect()
-    file ('samtools/*') from bwamem_idxstats_for_multiqc.collect()
-    file ('software_versions/*') from software_versions_yaml
+    file ('fastqc/*') from fastqc_results.collect().ifEmpty([])
+    file ('samtools/*') from bwamem_idxstats_for_multiqc.collect().ifEmpty([])
+    file ('software_versions/*') from software_versions_yaml.collect().ifEmpty([])
+    file ('qualimap/*') from qualimap_results.collect().ifEmpty([])
+    file ('dedup/*') from dedup_results_for_multiqc.collect().ifEmpty([])
+    file ('fastp/*') from fastp_for_multiqc.collect().ifEmpty([])
+
+    file workflow_summary from create_workflow_summary(summary)
 
     output:
     file "*multiqc_report.html" into multiqc_report

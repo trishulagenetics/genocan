@@ -4,9 +4,17 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - conda-forge::r-base=3.4.1
-  - conda-forge::r-markdown=0.8
-  - bioconda::fastqc=0.11.7
-  - bioconda::multiqc=1.6
-  - bioconda::stacks=2.1
-  - bioconda::trimmomatic=0.38
+  - defaults::openjdk=8.0.152
+  - r-base=3.4.1
+  - r-markdown=1.10
+  - fastqc=0.11.8
+  - bwa=0.7.17
+  - samtools=1.9
+  - bcftools=1.9
+  - dedup=0.12.3
+  - qualimap=2.2.2b
+  - multiqc=1.6
+  - fastp=0.19.4
+  - bamutil=1.0.14
+  - libiconv=1.15
+

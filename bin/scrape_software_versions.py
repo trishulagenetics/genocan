@@ -8,9 +8,11 @@ regexes = {
     'Nextflow': ['v_nextflow.txt', r"(\S+)"],
     'FastQC': ['v_fastqc.txt', r"FastQC v(\S+)"],
     'MultiQC': ['v_multiqc.txt', r"multiqc, version (\S+)"],
-    'Trimmomatic': ['v_trimmomatic.txt', r"(\S+)"],
+    'fastP': ['v_fastp.txt', r"([\d\.]+)"],
+    'Qualimap': ['v_qualimap.txt', r"QualiMap v.(\S+)"],
+    'bamUtil' : ['v_bamutil.txt', r"Version: ([\d\.]+)"],
     'bwa': ['v_bwa.txt', r"(\S+)"],
-    'samtools': ['v_samtools.txt', r"(\S+)"]
+    'samtools': ['v_samtools.txt', r"(\S+)"],
 }
 
 results = OrderedDict()
@@ -18,7 +20,9 @@ results['trishulagenetics/genocan'] = '<span style="color:#999999;\">N/A</span>'
 results['Nextflow'] = '<span style="color:#999999;\">N/A</span>'
 results['FastQC'] = '<span style="color:#999999;\">N/A</span>'
 results['MultiQC'] = '<span style="color:#999999;\">N/A</span>'
-results['Trimmomatic'] = '<span style="color:#999999;\">N/A</span>'
+results['fastP'] = '<span style="color:#999999;\">N/A</span>'
+results['Qualimap'] = '<span style="color:#999999;\">N/A</span>'
+results['bamUtil'] = '<span style="color:#999999;\">N/A</span>'
 results['bwa'] = '<span style="color:#999999;\">N/A</span>'
 results['samtools'] = '<span style="color:#999999;\">N/A</span>'
 
