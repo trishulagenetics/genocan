@@ -102,7 +102,7 @@ if(workflow.profile == 'awsbatch'){
 // Validate inputs
 Channel.fromPath("${params.fasta}")
     .ifEmpty { exit 1, "No genome specified! Please specify one with --fasta or --bwa_index"}
-    .into {ch_fasta_for_bwa_indexing;ch_fasta_for_faidx_indexing;ch_fasta_for_variant_call; ch_fasta_for_bwamem_mapping, ch_fasta_for_qualimap}
+    .into {ch_fasta_for_bwa_indexing; ch_fasta_for_faidx_indexing; ch_fasta_for_variant_call; ch_fasta_for_bwamem_mapping; ch_fasta_for_qualimap}
 
 /*
  * Create a channel for input read files
@@ -307,7 +307,7 @@ process bwa_align {
 
     input:
     set val(name), file(reads) from trimmed_fastq
-    file fasta ch_fasta_for_bwamem_mapping
+    file fasta from ch_fasta_for_bwamem_mapping
     file "*" from bwa_index
             
     output:
