@@ -220,7 +220,7 @@ process fastp {
     script:
     if(params.singleEnd){
     """
-    fastp --in1 ${reads[0]} --out1 ${name}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
+    fastp --in1 ${reads[0]} --out1 ${reads[0].baseName}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
     """
     } else {
     """
@@ -316,13 +316,13 @@ process bwa_align {
 
     if(params.singleEnd){
     """ 
-    bwa mem $fasta ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o "${name}"_sorted.bam
-    samtools index -@ ${task.cpus} "${name}"_sorted.bam
+    bwa mem $fasta ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     } else {
     """ 
-    bwa mem $fasta ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o "${name}"_sorted.bam
-    samtools index -@ ${task.cpus} "${name}"_sorted.bam
+    bwa mem $fasta ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     }
 
