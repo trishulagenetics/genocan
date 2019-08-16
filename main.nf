@@ -433,11 +433,11 @@ process variant_call {
 
     script:
     
-    prefix = "$bam" - ~/(\.bam)?$/
+    prefix = "$bam" - ~/(\_sorted.filtered.sorted.bam)?$/
 
     """
     bcftools mpileup -Ou -f ${fasta} ${bam} | bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} -Oz -o ${prefix}_variants.vcf
-    vcftools --vcf ${prefix}_variants.vcf --minDP 10 --recode --stdout > ${prefix}_filtered.vcf
+    bcftools filter -i 'DP>10' ${prefix}_variants.vcf > ${prefix}_variants_filtered.vcf
     """
 }
 
