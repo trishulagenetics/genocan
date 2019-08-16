@@ -42,7 +42,6 @@ def helpMessage() {
     --bwa_index                   Path to bwa index files
     --fasta_index                 Path to fasta index
     --saveReference               Saves reference genome indices for later reusage
-    --dedup_all_merged            Treat all reads as merged reads
     --snpcapture                  Runs in SNPCapture mode (specify a BED file if you do this!)
 
 	""".stripIndent()
@@ -70,7 +69,6 @@ params.plaintext_email = false
 params.bwa_index = false
 params.fasta_index = false
 params.saveReference = false
-params.dedup_all_merged = false
 params.snpcapture = false
 
 multiqc_config = file(params.multiqc_config)
@@ -204,7 +202,6 @@ process get_software_versions {
     qualimap --version &> v_qualimap.txt 2>&1 || true
     bwa &> v_bwa.txt 2>&1 || true
     samtools --version &> v_samtools.txt 2>&1 || true
-    bam --version &> v_bamutil.txt 2>&1 || true
     python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
 }
@@ -348,7 +345,7 @@ process samtools_filter {
     file bam from bwa_sorted_bam_filter
     
     output:
-    file "*filtered.bam" into bam_filtered_qualimap, bam_filtered_dedup, bam_filtered_call_variants
+    file "*filtered.bam" into bam_filtered_qualimap, bam_filtered_call_variants
     file "*.fastq.gz"
     file "*.bai"
 
@@ -361,39 +358,6 @@ process samtools_filter {
     samtools fastq -tn "${prefix}.unmapped.bam" | gzip > "${prefix}.unmapped.fastq.gz"
     samtools index -@ ${task.cpus} ${prefix}.filtered.bam
     """
-}
-
-process dedup{
-    tag "${bam.baseName}"
-    publishDir "${params.outdir}/deduplication/dedup"
-
-    input:
-    file bam from bam_filtered_dedup
-
-    output:
-    file "*.log" into dedup_results_for_multiqc
-    file "${prefix}.sorted.bam" into dedup_bam
-    file "*.bai"
-
-    script:
-    prefix="${bam.baseName}"
-    treat_merged="${params.dedup_all_merged}" ? '-m' : ''
-
-    if(params.singleEnd) {
-    """
-    dedup -i $bam $treat_merged -o . -u
-    mv *.log dedup.log
-    samtools sort -@ ${task.cpus} "$prefix"_rmdup.bam -o "$prefix".sorted.bam
-    samtools index -@ ${task.cpus} "$prefix".sorted.bam
-    """
-    } else {
-    """
-    dedup -i $bam $treat_merged -o . -u
-    mv *.log dedup.log
-    samtools sort -@ ${task.cpus} "$prefix"_rmdup.bam -o "$prefix".sorted.bam
-    samtools index -@ ${task.cpus} "$prefix".sorted.bam
-    """
-    }
 }
 
 process qualimap {
@@ -423,7 +387,7 @@ process variant_call {
     publishDir "${params.outdir}/samtools/variants", mode: 'copy'
 
     input:
-    file bam from dedup_bam
+    file bam from bam_filtered_call_variants
     file fasta from ch_fasta_for_variant_call
     file fasta_index
 
@@ -433,7 +397,7 @@ process variant_call {
 
     script:
     
-    prefix = "$bam" - ~/(\_sorted.filtered.sorted.bam)?$/
+    prefix = "$bam" - ~/(\_sorted.filtered.bam)?$/
 
     """
     bcftools mpileup -Ou -f ${fasta} ${bam} | bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} -Oz -o ${prefix}_variants.vcf
@@ -450,7 +414,6 @@ process multiqc {
     file ('samtools/*') from bwamem_idxstats_for_multiqc.collect().ifEmpty([])
     file ('software_versions/*') from software_versions_yaml.collect().ifEmpty([])
     file ('qualimap/*') from qualimap_results.collect().ifEmpty([])
-    file ('dedup/*') from dedup_results_for_multiqc.collect().ifEmpty([])
     file ('fastp/*') from fastp_for_multiqc.collect().ifEmpty([])
 
     file workflow_summary from create_workflow_summary(summary)
