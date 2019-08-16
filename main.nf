@@ -393,7 +393,7 @@ process variant_call {
 
     output:
     file "${prefix}_variants.vcf" into intial_vcf
-    file "${prefix}_filtered.vcf" into filtered_vcf
+    file "${prefix}_variants_filtered.vcf" into filtered_vcf
 
     script:
     
