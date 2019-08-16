@@ -98,6 +98,7 @@ if(workflow.profile == 'awsbatch'){
 }
 
 // Validate inputs
+
 Channel.fromPath("${params.fasta}")
     .ifEmpty { exit 1, "No genome specified! Please specify one with --fasta or --bwa_index"}
     .into {ch_fasta_for_bwa_indexing; ch_fasta_for_faidx_indexing; ch_fasta_for_variant_call; ch_fasta_for_bwamem_mapping; ch_fasta_for_qualimap}
@@ -207,7 +208,7 @@ process get_software_versions {
 }
 
 process build_bwa_index {
-    tag "$fasta"
+    tag {fasta}
 
     publishDir path: "${params.outdir}/bwa_index", mode: 'copy', saveAs: { filename ->
             if (params.saveReference) filename
@@ -233,7 +234,7 @@ process build_bwa_index {
 }
 
 process build_fasta_index {
-    tag "$fasta"
+    tag {fasta}
 
     publishDir path: "${params.outdir}/fasta_index", mode: 'copy', saveAs: { filename ->
             if (params.saveReference) filename
