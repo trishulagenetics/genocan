@@ -214,13 +214,13 @@ process fastp {
     set val(name), file(reads) from read_files_trim
 
     output:
-    set val(name), file("*_trim.fastq.gz") into trimmed_fastq
-    file("*.json") into fastp_for_multiqc
+    file "*_trim.fastq.gz" into trimmed_fastq
+    file "*.json" into fastp_for_multiqc
 
     script:
     if(params.singleEnd){
     """
-    fastp --in1 ${reads} --out1 ${name}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
+    fastp --in1 ${reads[0]} --out1 ${name}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
     """
     } else {
     """
@@ -300,6 +300,7 @@ process build_fasta_index {
 
 process bwa_align {
     tag "$name"
+    
     publishDir "${params.outdir}/mapping/bwamem", mode: 'copy'
 
     input:
@@ -308,14 +309,23 @@ process bwa_align {
     file "*" from bwa_index
             
     output:
-    file "${name}_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
+    file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
     file "*.bai"
             
+    script:
+
+    if(params.singleEnd){
     """ 
-    bwa mem $fasta ${reads} -t ${task.cpus} > ${name}.sam
-    samtools view -bS ${name}.sam | samtools sort -@ ${task.cpus} -O bam - > ${name}_sorted.bam
-    samtools index -@ ${task.cpus} ${name}_sorted.bam
+    bwa mem $fasta ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o "${name}"_sorted.bam
+    samtools index -@ ${task.cpus} "${name}"_sorted.bam
     """ 
+    } else {
+    """ 
+    bwa mem $fasta ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o "${name}"_sorted.bam
+    samtools index -@ ${task.cpus} "${name}"_sorted.bam
+    """ 
+    }
+
 }
 
 process samtools_idxstats {
