@@ -214,17 +214,17 @@ process fastp {
     set val(name), file(reads) from read_files_trim
 
     output:
-    file "*_trim.fastq.gz" into trimmed_fastq
+    set val(name), file("*trim.fastq.gz") into trimmed_fastq
     file "*.json" into fastp_for_multiqc
 
     script:
     if(params.singleEnd){
     """
-    fastp --in1 ${reads[0]} --out1 ${reads[0].baseName}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
+    fastp --in1 ${reads[0]} --out1 "${reads[0].baseName}_trim.fastq.gz" -w ${task.cpus} --json "${reads[0].baseName}"_fastp.json
     """
     } else {
     """
-    fastp --in1 ${reads[0]} --in2 ${reads[1]} --out1 ${reads[0].baseName}_trim.fastq.gz --out2 ${reads[1].baseName}_trim.fastq.gz -w ${task.cpus} --json ${name}_fastp.json
+    fastp --in1 ${reads[0]} --in2 ${reads[1]} --out1 "${reads[0].baseName}_trim.fastq.gz" --out2 "${reads[1].baseName}_trim.fastq.gz" -w ${task.cpus} --json "${reads[0].baseName}"_fastp.json
     """
     }
 }
