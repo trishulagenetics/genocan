@@ -17,4 +17,5 @@ dependencies:
   - fastp=0.19.4
   - bamutil=1.0.14
   - libiconv=1.15
+  - vcftools=0.1.15
 
