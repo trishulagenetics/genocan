@@ -206,47 +206,6 @@ process get_software_versions {
     """
 }
 
-process fastp {
-    tag "$name"
-    publishDir "${params.outdir}/FastP", mode: 'copy'
-
-    input:
-    set val(name), file(reads) from read_files_trim
-
-    output:
-    set val(name), file("*trim.fastq.gz") into trimmed_fastq
-    file "*.json" into fastp_for_multiqc
-
-    script:
-    if(params.singleEnd){
-    """
-    fastp --in1 ${reads[0]} --out1 "${reads[0].baseName}_trim.fastq.gz" -w ${task.cpus} --json "${reads[0].baseName}"_fastp.json
-    """
-    } else {
-    """
-    fastp --in1 ${reads[0]} --in2 ${reads[1]} --out1 "${reads[0].baseName}_trim.fastq.gz" --out2 "${reads[1].baseName}_trim.fastq.gz" -w ${task.cpus} --json "${reads[0].baseName}"_fastp.json
-    """
-    }
-}
-
-process fastqc {
-    tag "$name"
-    publishDir "${params.outdir}/fastqc", mode: 'copy',
-        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
-
-    input:
-     
-    set val(name), file(reads) from read_files_fastqc
-
-    output:
-    file "*_fastqc.{zip,html}" into fastqc_results
-
-    script:
-    """
-    fastqc -q $reads
-    """
-}
-
 process build_bwa_index {
     tag "$fasta"
 
@@ -265,7 +224,7 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index)
     file "where_are_my_files.txt"
 
     """
@@ -296,6 +255,47 @@ process build_fasta_index {
     """
     samtools faidx $fasta
     """
+}
+
+process fastqc {
+    tag "$name"
+    publishDir "${params.outdir}/fastqc", mode: 'copy',
+        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+
+    input:
+     
+    set val(name), file(reads) from read_files_fastqc
+
+    output:
+    file "*_fastqc.{zip,html}" into fastqc_results
+
+    script:
+    """
+    fastqc -q $reads
+    """
+}
+
+process fastp {
+    tag "$name"
+    publishDir "${params.outdir}/FastP", mode: 'copy'
+
+    input:
+    set val(name), file(reads) from read_files_trim
+
+    output:
+    set val(name), file("*trim.fastq.gz") into trimmed_fastq
+    file "*.json" into fastp_for_multiqc
+
+    script:
+    if(params.singleEnd){
+    """
+    fastp --in1 ${reads[0]} --out1 "${reads[0].baseName}_trim.fastq.gz" -w ${task.cpus} --json "${reads[0].baseName}"_fastp.json
+    """
+    } else {
+    """
+    fastp --in1 ${reads[0]} --in2 ${reads[1]} --out1 "${reads[0].baseName}_trim.fastq.gz" --out2 "${reads[1].baseName}_trim.fastq.gz" -w ${task.cpus} --json "${reads[0].baseName}"_fastp.json
+    """
+    }
 }
 
 process bwa_align {
