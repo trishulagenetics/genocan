@@ -317,12 +317,12 @@ process bwa_align {
 
     if(params.singleEnd){
     """ 
-    bwa mem $fasta ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem $bwa_index ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     } else {
     """ 
-    bwa mem $fasta ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem $bwa_index ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     }
