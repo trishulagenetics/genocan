@@ -82,11 +82,6 @@ if (params.fasta) {
   if( !fasta.exists() ) exit 1, "Fasta file not found: ${params.fasta}"
 }
 
-if (params.bwa_index) {
-  bwa_index = file(params.bwa_index)
-  if( !bwa_index.exists() ) exit 1, "BWA index files not found: ${params.bwa_index}"
-}
-
 // Use user-specified run name
 
 custom_runName = params.name
@@ -230,7 +225,7 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index)
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index_bwamem)
     file "where_are_my_files.txt"
 
     """
@@ -312,7 +307,7 @@ process bwa_align {
     input:
     set val(name), file(reads) from trimmed_fastq
     file fasta from ch_fasta_for_bwamem_mapping
-    file "*" from bwa_index
+    file "*" from bwa_index_bwamem
             
     output:
     file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
