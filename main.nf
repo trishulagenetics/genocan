@@ -66,7 +66,7 @@ params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : 
 params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
 params.email = false
 params.plaintext_email = false
-params.bwa_index = './bwa_index'
+params.bwa_index = false
 params.fasta_index = false
 params.saveReference = false
 params.snpcapture = false
@@ -78,8 +78,13 @@ wherearemyfiles = file("$baseDir/assets/where_are_my_files.txt")
 // Validate inputs
 
 if (params.fasta) {
-	fasta = file(params.fasta)
-	if( !fasta.exists() ) exit 1, "Fasta file not found: ${params.fasta}"
+  fasta = file(params.fasta)
+  if( !fasta.exists() ) exit 1, "Fasta file not found: ${params.fasta}"
+}
+
+if (params.bwa_index) {
+  bwa_index = file(params.bwa_index)
+  if( !bwa_index.exists() ) exit 1, "BWA index files not found: ${params.bwa_index}"
 }
 
 // Use user-specified run name
@@ -156,10 +161,10 @@ def create_workflow_summary(summary) {
 
     def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
     yaml_file.text  = """
-    id: 'nf-core-eager-summary'
+    id: 'trishulagenetics-genocan-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/eager Workflow Summary'
-    section_href: 'https://github.com/nf-core/eager'
+    section_name: 'trishulagenetics/genocan Workflow Summary'
+    section_href: 'https://github.com/trishulagenetics/genocan'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
@@ -225,7 +230,7 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index)
     file "where_are_my_files.txt"
 
     """
@@ -307,7 +312,7 @@ process bwa_align {
     input:
     set val(name), file(reads) from trimmed_fastq
     file fasta from ch_fasta_for_bwamem_mapping
-    file index from bwa_index
+    file "*" from bwa_index
             
     output:
     file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
@@ -317,12 +322,12 @@ process bwa_align {
 
     if(params.singleEnd){
     """ 
-    bwa mem bwa_index ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem $fasta ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     } else {
     """ 
-    bwa mem bwa_index ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem $fasta ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     }
