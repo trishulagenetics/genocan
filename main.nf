@@ -307,7 +307,7 @@ process bwa_align {
     input:
     set val(name), file(reads) from trimmed_fastq
     file fasta from ch_fasta_for_bwamem_mapping
-    file "*" from bwa_index
+    file index from bwa_index
             
     output:
     file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
@@ -317,12 +317,12 @@ process bwa_align {
 
     if(params.singleEnd){
     """ 
-    bwa mem $bwa_index ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem bwa_index ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     } else {
     """ 
-    bwa mem $bwa_index ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem bwa_index ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     }
