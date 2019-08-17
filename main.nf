@@ -62,7 +62,8 @@ if (params.help){
 // Configurable variables
 
 params.name = false
-params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : false
+//params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : false
+params.fasta = false
 params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
 params.email = false
 params.plaintext_email = false
@@ -225,7 +226,7 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index)
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index_bwamem
     file "where_are_my_files.txt"
 
     """
@@ -307,7 +308,7 @@ process bwa_align {
     input:
     set val(name), file(reads) from trimmed_fastq
     file fasta from ch_fasta_for_bwamem_mapping
-    file "*" from bwa_index
+    file "*" from bwa_index_bwamem
             
     output:
     file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
