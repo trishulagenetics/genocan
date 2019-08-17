@@ -225,7 +225,7 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index)
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index
     file "where_are_my_files.txt"
 
     """
