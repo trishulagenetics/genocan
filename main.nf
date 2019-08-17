@@ -307,7 +307,8 @@ process bwa_align {
 
     input:
     set val(name), file(reads) from trimmed_fastq
-    file fasta from ch_fasta_for_bwamem_mapping
+    file fasta
+    //file fasta from ch_fasta_for_bwamem_mapping
     file "*" from bwa_index_bwamem
             
     output:
