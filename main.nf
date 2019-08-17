@@ -225,7 +225,7 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index_bwamem)
+    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into (bwa_index)
     file "where_are_my_files.txt"
 
     """
@@ -307,7 +307,7 @@ process bwa_align {
     input:
     set val(name), file(reads) from trimmed_fastq
     file fasta from ch_fasta_for_bwamem_mapping
-    file "*" from bwa_index_bwamem
+    file "*" from bwa_index
             
     output:
     file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
