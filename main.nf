@@ -382,7 +382,7 @@ process qualimap {
 
     input:
     file bam from bam_filtered_qualimap
-    file fasta from ch_fasta_for_qualimap
+    file ref_fasta
 
     output:
     file "*" into qualimap_results
@@ -401,7 +401,7 @@ process variant_call {
 
     input:
     file bam from bam_filtered_call_variants
-    file fasta from ch_fasta_for_variant_call
+    file fasta
     file fasta_index
 
     output:
