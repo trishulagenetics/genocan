@@ -417,7 +417,7 @@ process multiqc {
     input:
     file multiqc_config
     file ('fastqc/*') from fastqc_results.collect().ifEmpty([])
-    file ('samtools/*') from minimap_idxstats_for_multiqc.collect().ifEmpty([])
+    file ('samtools/*') from minimap2_idxstats_for_multiqc.collect().ifEmpty([])
     file ('software_versions/*') from software_versions_yaml.collect().ifEmpty([])
     file ('qualimap/*') from qualimap_results.collect().ifEmpty([])
     file ('fastp/*') from fastp_for_multiqc.collect().ifEmpty([])
