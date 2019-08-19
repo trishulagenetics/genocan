@@ -39,7 +39,7 @@ def helpMessage() {
 
 	References			                If not specified in the configuration file or if you wish to overwrite any of the references
 		--fasta			                  Path to fasta reference
-    --bwa_index                   Path to bwa index files
+    --minimap2_index              Path to minimap2 index file
     --fasta_index                 Path to fasta index
     --saveReference               Saves reference genome indices for later reusage
     --snpcapture                  Runs in SNPCapture mode (specify a BED file if you do this!)
@@ -65,7 +65,7 @@ params.name = false
 params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
 params.email = false
 params.plaintext_email = false
-params.bwa_index = false
+params.minimap2_index = false
 params.fasta_index = false
 params.saveReference = false
 params.snpcapture = false
@@ -125,7 +125,7 @@ summary['Pipeline version'] = params.version
 summary['Run name'] = custom_runName ?: workflow.runName
 summary['Reads'] = params.reads
 summary['Fasta reference'] = params.fasta
-summary['bwa index'] = params.bwa_index
+summary['minimap2 index'] = params.minimap2_index
 summary['Data type'] = params.singleEnd ? 'Single-end' : 'Paired-end'
 summary['Max Memory']   = params.max_memory
 summary['Max CPUs']     = params.max_cpus
@@ -198,22 +198,22 @@ process get_software_versions {
     multiqc --version &> v_multiqc.txt 2>&1 || true
     fastp --version &> v_fastp.txt 2>&1 || true
     qualimap --version &> v_qualimap.txt 2>&1 || true
-    bwa &> v_bwa.txt 2>&1 || true
+    minimap2 --version &> v_minimap2.txt 2>&1 || true
     samtools --version &> v_samtools.txt 2>&1 || true
     python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
 }
 
-process build_bwa_index {
+process build_minimap2_index {
     tag {fasta}
 
-    publishDir path: "${params.outdir}/bwa_index", mode: 'copy', saveAs: { filename ->
+    publishDir path: "${params.outdir}/minimap2_index", mode: 'copy', saveAs: { filename ->
             if (params.saveReference) filename
             else if(!params.saveReference && filename == "where_are_my_files.txt") filename
             else null
     }
 
-    when: !params.bwa_index && params.fasta
+    when: !params.minimap2_index && params.fasta
 
     input:
         
@@ -222,11 +222,11 @@ process build_bwa_index {
 
     output:
         
-    file "*.{amb,ann,bwt,pac,sa,fasta,fa}" into bwa_index_bwamem
+    file "*.mmi" into minimap2_index_minimap2
     file "where_are_my_files.txt"
 
     """
-    bwa index "${ref_fasta}"
+    minimap2 -d "${ref_fasta}.mmi" "${ref_fasta}"
     """
 }
 
@@ -295,45 +295,44 @@ process fastp {
     }
 }
 
-process bwa_align {
-    tag "$name"
+process minimap2_align {
+  tag "$name"
     
-    publishDir "${params.outdir}/mapping/bwamem", mode: 'copy'
+    publishDir "${params.outdir}/mapping/minimap2", mode: 'copy'
 
     input:
     set val(name), file(reads) from trimmed_fastq
-    file ref_fasta
-    file "*" from bwa_index_bwamem
+    file minimap2_index from minimap2_index_minimap2
             
     output:
-    file "*_sorted.bam" into bwa_sorted_bam_idxstats, bwa_sorted_bam_filter
+    file "*_sorted.bam" into minimap2_sorted_bam_idxstats, minimap2_sorted_bam_filter
     file "*.bai"
             
     script:
 
     if(params.singleEnd){
     """ 
-    bwa mem "${ref_fasta}" ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    minimap2 -ax sr $minimap2_index ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     } else {
     """ 
-    bwa mem "${ref_fasta}" ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    minimap2 -ax sr $minimap2_index ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     }
-
 }
+
 
 process samtools_idxstats {
     tag "$prefix"
     publishDir "${params.outdir}/samtools/stats", mode: 'copy'
 
     input:
-    file bam from bwa_sorted_bam_idxstats
+    file bam from minimap2_sorted_bam_idxstats
 
     output:
-    file "*.stats" into bwamem_idxstats_for_multiqc
+    file "*.stats" into minimap2_idxstats_for_multiqc
 
     script:
     
@@ -349,7 +348,7 @@ process samtools_filter {
     publishDir "${params.outdir}/samtools/filter", mode: 'copy'
 
     input:
-    file bam from bwa_sorted_bam_filter
+    file bam from minimap2_sorted_bam_filter
     
     output:
     file "*filtered.bam" into bam_filtered_qualimap, bam_filtered_call_variants
@@ -418,7 +417,7 @@ process multiqc {
     input:
     file multiqc_config
     file ('fastqc/*') from fastqc_results.collect().ifEmpty([])
-    file ('samtools/*') from bwamem_idxstats_for_multiqc.collect().ifEmpty([])
+    file ('samtools/*') from minimap_idxstats_for_multiqc.collect().ifEmpty([])
     file ('software_versions/*') from software_versions_yaml.collect().ifEmpty([])
     file ('qualimap/*') from qualimap_results.collect().ifEmpty([])
     file ('fastp/*') from fastp_for_multiqc.collect().ifEmpty([])
