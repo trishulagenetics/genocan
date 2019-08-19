@@ -251,11 +251,11 @@ process build_fasta_index {
     file wherearemyfiles
 
     output:
-    file "${fasta}.fai" into fasta_index
+    file "${ref_fasta}.fai" into fasta_index
     file "where_are_my_files.txt"
 
     """
-    samtools faidx $fasta
+    samtools faidx "${ref_fasta}"
     """
 }
 
@@ -319,12 +319,12 @@ process bwa_align {
 
     if(params.singleEnd){
     """ 
-    bwa mem $fasta ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem "${ref_fasta}" ${reads[0]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     } else {
     """ 
-    bwa mem $fasta ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
+    bwa mem "${ref_fasta}" ${reads[0]} ${reads[1]} -t ${task.cpus} | samtools sort -@ ${task.cpus} -o ${name}_sorted.bam
     samtools index -@ ${task.cpus} ${name}_sorted.bam
     """ 
     }
@@ -401,7 +401,7 @@ process variant_call {
 
     input:
     file bam from bam_filtered_call_variants
-    file fasta
+    file ref_fasta
     file fasta_index
 
     output:
@@ -413,7 +413,7 @@ process variant_call {
     prefix = "$bam" - ~/(\_sorted.filtered.bam)?$/
 
     """
-    bcftools mpileup -Ou -f ${fasta} ${bam} | bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} -Oz -o ${prefix}_variants.vcf
+    bcftools mpileup -Ou -f "${ref_fasta}" ${bam} | bcftools call --multiallelic-caller --variants-only --no-version --threads ${task.cpus} -Oz -o ${prefix}_variants.vcf
     bcftools filter -i 'DP>10' ${prefix}_variants.vcf > ${prefix}_variants_filtered.vcf
     """
 }
