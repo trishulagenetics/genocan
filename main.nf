@@ -63,7 +63,6 @@ if (params.help){
 
 params.name = false
 //params.fasta = params.genome ? params.genomes[ params.genome ].fasta ?: false : false
-params.fasta = false
 params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
 params.email = false
 params.plaintext_email = false
@@ -75,6 +74,8 @@ params.snpcapture = false
 multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
 wherearemyfiles = file("$baseDir/assets/where_are_my_files.txt")
+
+ref_fasta = file(params.fasta)
 
 // Validate inputs
 
@@ -100,9 +101,9 @@ if(workflow.profile == 'awsbatch'){
 
 // Validate inputs
 
-Channel.fromPath("${params.fasta}")
-    .ifEmpty { exit 1, "No genome specified! Please specify one with --fasta or --bwa_index"}
-    .into {ch_fasta_for_bwa_indexing; ch_fasta_for_faidx_indexing; ch_fasta_for_variant_call; ch_fasta_for_bwamem_mapping; ch_fasta_for_qualimap}
+//Channel.fromPath("${params.fasta}")
+//    .ifEmpty { exit 1, "No genome specified! Please specify one with --fasta or --bwa_index"}
+//    .into {ch_fasta_for_bwa_indexing; ch_fasta_for_faidx_indexing; ch_fasta_for_variant_call; ch_fasta_for_bwamem_mapping; ch_fasta_for_qualimap}
 
 /*
  * Create a channel for input read files
@@ -221,7 +222,7 @@ process build_bwa_index {
 
     input:
         
-    file fasta from ch_fasta_for_bwa_indexing
+    file ref_fasta
     file wherearemyfiles
 
     output:
@@ -230,7 +231,7 @@ process build_bwa_index {
     file "where_are_my_files.txt"
 
     """
-    bwa index $fasta
+    bwa index "${ref_fasta}"
     """
 }
 
@@ -246,12 +247,11 @@ process build_fasta_index {
     when: !params.fasta_index && params.fasta
 
     input:
-    file fasta from ch_fasta_for_faidx_indexing
+    file ref_fasta
     file wherearemyfiles
 
     output:
     file "${fasta}.fai" into fasta_index
-    file "${fasta}"
     file "where_are_my_files.txt"
 
     """
@@ -307,7 +307,7 @@ process bwa_align {
 
     input:
     set val(name), file(reads) from trimmed_fastq
-    file fasta
+    file ref_fasta
     //file fasta from ch_fasta_for_bwamem_mapping
     file "*" from bwa_index_bwamem
             
