@@ -2,12 +2,12 @@ From:nfcore/base
 Bootstrap:docker
 
 %labels
-    MAINTAINER Andries van Tonder <trishulagenetics@gmail.com>
-    DESCRIPTION Singularity image containing all requirements for trishulagenetics/genocan pipeline
+    MAINTAINER Andries van Tonder <andries@trishulagenomics.com>
+    DESCRIPTION Singularity image containing all requirements for trishulagenomics/genocan pipeline
     VERSION 0.1dev
 
 %environment
-    PATH=/opt/conda/envs/trishulagenetics-genocan-0.1dev/bin:$PATH
+    PATH=/opt/conda/envs/trishulagenomics-genocan-0.1dev/bin:$PATH
     export PATH
 
 %files
