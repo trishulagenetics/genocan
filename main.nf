@@ -179,6 +179,8 @@ try {
 
 process get_software_versions {
 
+    publishDir "${params.outdir}/software_versions", mode: 'copy'
+
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
 
@@ -192,7 +194,7 @@ process get_software_versions {
     qualimap --version &> v_qualimap.txt 2>&1 || true
     minimap2 --version &> v_minimap2.txt 2>&1 || true
     samtools --version &> v_samtools.txt 2>&1 || true
-    python s3://trishulagenomics/scripts/scrape_software_versions.py > software_versions_mqc.yaml
+    python ${baseDir}/bin/scrape_software_versions.py > software_versions_mqc.yaml
     """
 }
 
