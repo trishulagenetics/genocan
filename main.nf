@@ -366,7 +366,7 @@ process samtools_filter {
     prefix = "$bam" - ~/(\.bam)?$/
 
     """
-    samtools view -h $bam -f4 -q 15 -b -o ${prefix}.filtered.bam
+    samtools view -h $bam -F 4 -q 15 -b -o ${prefix}.filtered.bam
     samtools index ${prefix}.filtered.bam
     """
 }
